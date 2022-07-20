@@ -1,0 +1,371 @@
+server:
+  port: 8080
+spring:
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+      default-filters:
+      - name: ReplayAttack
+        args:
+          expiredTime: 900
+          passUrl:
+          - /behavior/webFront/build
+          - /fileRecord/downloadFile
+          - /irobotbox/order
+          - /irobotbox/refund/order
+          - /template/location
+          - /finance/accountchart/item/upload
+          - /finance/accountchart/item/tpl
+          - /finance/accountchart/item/error/info
+          - /finance/accounting/auxiliary/upload
+          - /finance/accounting/auxiliary/template
+          - /finance/accounting/auxiliary/download
+          - /finance/accounting/auxiliary/importFailed
+          - /finance/accounting/statement/tpl
+          - /finance/transaction/template
+          - /finance/transaction/error/info
+          - /finance/accounting/collection
+          - /finance/accounting/statement/error/info
+          - /finance/accounting/statement/download
+          - /finance/accounting/receipt/download
+          - /finance/accounting/receipt/template
+          - /finance/accounting/receipt/error/info
+          - /websocket/**
+          - /finance/purchase/reconciliation/download
+          - /finance/purchase/reconciliation/bill/download
+          - /finance/stock/period/page
+          - /finance/stock/period/error/info
+          - /finance/stock/period/template
+          - /finance/accounting/stock/download
+          - /finance/accounting/stock/error/info
+          - /finance/accounting/adjustment/download
+          - /repair/order/gift/auditCallback
+          - /repair/order/getComplaintOrderList
+          - /authcenter/**
+          - /file/api/phothThumbnailPath
+          - /file/api/upload
+          - /file/api/downloadFile
+          - /file/fileRecord/upload
+          - /repair/vantoplife/add
+          - /repair/vantoplife/page
+          - /repair/vantoplife/detail
+          - /mail/knowledge/**
+          - /repair/vantoplife/template
+          - /repair/vantoplife/template/fields
+          - /rec/**
+          - /finance/**
+          - /facebook/**
+          - /ws/**
+          - /ticketbase/**
+          - /appPlatform/**
+          - /userPlatform/**
+          - /backgroundUser/**
+          - /finance/expense/download
+          - /finance/expense/pool/template
+          - /finance/expense/pool/upload
+          - /finance/expense/pool/error/info
+          - /finance/expense/pool/download
+          - /finance/expense/share/detail/download
+          - /finance/expense/share/detail/items/download
+      - name: RBL
+        args:
+          blacklistUrl:
+          - /echo222/**
+          whitelistUrl:
+          - /test/**
+          - /login
+          - /login/logout
+          - /irobotbox/order
+          - /irobotbox/refund/order
+      - name: Auth
+      routes:
+      - id: nextop_behavior_router
+        uri: lb://nextop-behavior
+        predicates:
+        - Path=/behavior/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_behavior_websocket_router
+        uri: lb:ws://nextop-behavior
+        predicates:
+        - Path=/behavior/ws/**
+        filters:
+        - StripPrefix=2
+      - id: nextop_test_router
+        uri: lb://nextop-test
+        predicates:
+        - Path=/test/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_auth_router
+        uri: lb://security-auth
+        predicates:
+        - Path=/auth/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_user_router
+        uri: lb://nextop-user
+        predicates:
+        - Path=/user/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_role_router
+        uri: lb://nextop-role
+        predicates:
+        - Path=/role/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_resource_router
+        uri: lb://nextop-resource
+        predicates:
+        - Path=/resource/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_goods_router
+        uri: lb://nextop-goods
+        predicates:
+        - Path=/goods/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_market_router
+        uri: lb://nextop-market
+        predicates:
+        - Path=/market/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_logistics_router
+        uri: lb://nextop-logistics
+        predicates:
+        - Path=/logistics/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_purchase_router
+        uri: lb://nextop-purchase
+        predicates:
+        - Path=/purchase/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_xxl-job-admin_router
+        uri: lb://xxl-job-admin
+        predicates:
+        - Path=/xxl/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_file_center_router
+        uri: lb://nextop-fileservice-center
+        predicates:
+        - Path=/file/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_stock_router
+        uri: lb://nextop-stock
+        predicates:
+        - Path=/stock/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_diplomat_router
+        uri: lb://nextop-diplomat
+        predicates:
+        - Path=/diplomat/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_warehouse_router
+        uri: lb://nextop-warehouse
+        predicates:
+        - Path=/warehouse/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_ticketbase_router
+        uri: lb://scrm-ticket-base
+        predicates:
+        - Path=/ticketbase/**,/repair/category/**,/mail/mail/businessType/**,/mail/mail/blackList/**,/mail/mail/client/**,/mail/customerService/**,/mail/mail/document/**,/mail/facebook/pageConfig/**,/mail/mail/folder/**,/mail/keyword/**,/mail/knowledge/**,/mail/language/**,/mail/mail/config/**,/mail/mail/inbox/**,/mail/mail/inner/**,/mail/mailLabel/**,/mail/mail/receive,/mail/template/**,/repair/order/field/**,/repair/order/template/**,/repair/outer/add,/repair/outer/update,/repair/outer/detail
+        filters:
+        - StripPrefix=1
+        - DedupeResponseHeader=Access-Control-Allow-Credentials Access-Control-Allow-Origin
+      - id: nextop_mail_router
+        uri: lb://nextop-mail
+        predicates:
+        - Path=/mail/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_finance_router
+        uri: lb://nextop-finance
+        predicates:
+        - Path=/finance/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_bi_analysis_router
+        uri: lb://nextop-bi-analysis
+        predicates:
+        - Path=/analysis/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_websocket_router
+        uri: lb://nextop-websocket
+        predicates:
+        - Path=/websocket/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_workflow_router
+        uri: lb://nextop-workflow-camunda
+        predicates:
+        - Path=/workflow/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_repairorder_router
+        uri: lb://nextop-repair-order
+        predicates:
+        - Path=/repair/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_statistics_router
+        uri: lb://nextop-statistics
+        predicates:
+        - Path=/statistics/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_oms_router
+        uri: lb://nextop-oms-main
+        predicates:
+        - Path=/oms/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_platform_authcenter_router
+        uri: lb://nextop-platform-auth-center
+        predicates:
+        - Path=/authcenter/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_system_router
+        uri: lb://nextop-system
+        predicates:
+        - Path=/system/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_finance_receivable_router
+        uri: lb://nextop-finance-receivable
+        predicates:
+        - Path=/rec/**
+        filters:
+        - StripPrefix=1
+      - id: customer-center-facebook
+        uri: lb://nextop-facebook
+        predicates:
+        - Path=/facebook/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_mailcenter_router
+        uri: lb://nextop-mail-center
+        predicates:
+        - Path=/mailcenter/**
+        filters:
+        - StripPrefix=1
+      - id: calculate_main_router
+        uri: lb://nextop-calculate-main
+        predicates:
+        - Path=/calculate/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_ocr_router
+        uri: lb://nextop-ocr
+        predicates:
+        - Path=/ocr/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_data_center
+        uri: lb://data-center
+        predicates:
+        - Path=/datacenter/dc/developer/open/sign
+        filters:
+        - StripPrefix=1
+      - id: nextop-data-analysis_router
+        uri: lb://nextop-data-analysis
+        predicates:
+        - Path=/dataAnalysis/**
+        filters:
+        - StripPrefix=1
+      - id: notification-platform_router
+        uri: lb://notification-platform
+        predicates:
+        - Path=/notification/**
+        filters:
+        - StripPrefix=1
+      - id: message_platform_router
+        uri: lb://nextop-message-platform
+        predicates:
+        - Path=/message/**
+        filters:
+        - StripPrefix=1
+      - id: nextop-data-export_router
+        uri: lb://nextop-data-export
+        predicates:
+        - Path=/dataAnalysisExport/**
+        filters:
+        - StripPrefix=1
+      - id: nextop_app_platform_router
+        uri: lb://nextop-app-platform
+        predicates:
+          - Path=/appPlatform/**
+        filters:
+          - StripPrefix=1
+      - id: nextop_background_user_router
+        uri: lb://nextop-background-user
+        predicates:
+          - Path=/backgroundUser/**
+        filters:
+          - StripPrefix=1
+      - id: user-platform_router
+        uri: lb://nxetop-user-platform
+        predicates:
+          - Path=/userPlatform/**
+        filters:
+          - StripPrefix=1           
+logging:
+  level:
+    com.alibaba.nacos: false
+    com.netflix: false
+  config: classpath:logback-spring.xml
+  file:
+    path: /var/logs/nextop/${spring.application.name}
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 10000
+        readTimeout: 10000
+ribbon:
+  ReadTimeout: 10000
+  ConnectTimeout: 10000
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+  endpoint:
+    health:
+      show-details: always
+hystrix:
+  command:
+    default:
+      fallback:
+        enabled: false
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 3000
+        timeout:
+          enabled: true
+      metrics:
+        rollingStats:
+          timeInMilliseconds: 10000
+      circuitBreaker:
+        requestVolumeThreshold: 20
+        errorThresholdPercentage: 50
+        sleepWindowInMilliseconds: 5000
+      threadPool:
+        coreSize: 10
+app:
+  sqlInject:
+    regex: (?:')|(?:--)|(/\*(?:.|[\n\r])*?\*/)|(\b(select|update|and|or|delete|insert|trancate|char|into|substr|ascii|declare|exec|count|master|into|drop|execute)\b)

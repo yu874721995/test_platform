@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: nextop-test-platform
+  name: nextop-test-platform
+  namespace: ENV
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nextop-test-platform
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: nextop-test-platform
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - nextop-test-platform
+            topologyKey: kubernetes.io/hostname
+      containers:
+      - image: IMAGEURL:VERSION
+        imagePullPolicy: Always
+        name: nextop-test-platform
+        env:
+        - name: RANDOM
+          value: "random_num"
+        - name: MYSQL_HOST
+          value: "mysql_host"
+        - name: MYSQL_PORT
+          value: "mysql_port"
+        - name: MYSQL_USER
+          value: "mysql_user"
+        - name: MYSQL_PASSWORD
+          value: "mysql_password"
+        resources:
+          limits:
+            memory: 2Gi
+          requests:
+            memory: 2Gi
+      imagePullSecrets:
+      - name: nextop-docker-key
+      hostAliases:
+        - hostnames:
+            - datacenter-daily.nextop.com
+            - bi-web.nextop.com
+            - api-fb-daily.nextop.com
+            - web-bigdata.nextop.com
+            - api.nextop.com
+            - web-customer.nextop.com
+            - web-demand.nextop.com
+            - web-finance.nextop.com
+            - web-goods.nextop.com
+            - web-inreport.nextop.com
+            - web-login.nextop.com
+            - web-logistics.nextop.com
+            - saas.nextop.com
+            - web-ocr.nextop.com
+            - admin.nextop.com
+            - web-purchase.nextop.com
+            - web-sales.nextop.com
+            - web-statistical.nextop.com
+            - web-system.nextop.com
+            - web-warehouse.nextop.com
+          ip: 10.0.10.132      

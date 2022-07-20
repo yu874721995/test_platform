@@ -1,0 +1,14 @@
+FROM registry.cn-shenzhen.aliyuncs.com/nextop-com/python:3.8_new
+RUN rm -f /etc/localtime && ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+ADD ./nextop-test-platform /opt/nextop_test_platform
+RUN pip install -r /opt/nextop_test_platform/requirements.txt -i http://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com
+RUN cp /opt/nextop_test_platform/fix_files/import_test_platform.pth /usr/local/lib/python3.8/site-packages/import_test_platform.pth
+RUN cd /root && mkdir .EasyOCR && cd .EasyOCR && mkdir model
+RUN cp /opt/nextop_test_platform/zh_sim_g2.pth /root/.EasyOCR/model/zh_sim_g2.pth
+RUN cp /opt/nextop_test_platform/english_g2.pth /root/.EasyOCR/model/english_g2.pth
+RUN cp /opt/nextop_test_platform/craft_mlt_25k.pth /root/.EasyOCR/model/craft_mlt_25k.pth
+RUN rm -f /usr/local/lib/python3.8/site-packages/django/db/backends/mysql/operations.py && cp /opt/nextop_test_platform/fix_files/operations.py /usr/local/lib/python3.8/site-packages/django/db/backends/mysql/
+RUN rm -f /usr/local/lib/python3.8/site-packages/django_apscheduler/jobstores.py && cp /opt/nextop_test_platform/fix_files/jobstores.py /usr/local/lib/python3.8/site-packages/django_apscheduler/
+WORKDIR /opt/nextop_test_platform
+CMD python3 manage.py makemigrations user && python3 /opt/nextop_test_platform/manage.py runserver 0.0.0.0:8080
+
