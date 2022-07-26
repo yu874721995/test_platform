@@ -109,10 +109,10 @@ WSGI_APPLICATION = 'nextop_backend.wsgi.application'
 if not os.environ.__contains__('MYSQL_HOST'):
     # 本地数据库配置
     # 极昼钉钉应用配置
-    DING_APPKEY = 'ding6zjpdmhpxyp6zskr'
-    DING_SECRET = 'Kc5m_nJdR-N-rvQvC96KYZcjF9U0gFQ6_HytAkofMxTUVqVxHPNP8LEgyTKfOHW2'
-    DING_AGENT_ID = 1428746030
-    ROBOT_ID = 'dingtgglrbw9nxhmobok'
+    DING_APPKEY = 'xxxxx'
+    DING_SECRET = 'xxxxxx'
+    DING_AGENT_ID = 123456
+    ROBOT_ID = 'xxxxxx'
 
     # DING_APPKEY = 'dinglufhne3xdfc2pbqw'
     # DING_SECRET = '_Kr9BOD8VpAFOzaChXu5zfVDl10axoB2GqsURABVzSXsETgSvkUGL91fN090alPM'
@@ -137,14 +137,14 @@ if not os.environ.__contains__('MYSQL_HOST'):
     }
     # ENCODE_ASE_KEY = 'APr3CU3rBqCeLyT2Tu8eJHqF9HmIkgVMe96o5t88RVq'
     # DING_TOKEN = 'jEDxr8k7d5B6ih2u1C73HiXLJFOKiY6QxN7MR8w3uxqH9xWt'
-    ENCODE_ASE_KEY = 'KPMMNTnLsqV3tVIre8fjkp8BilT2J7tPbgcUjlHydjl'
-    DING_TOKEN = 'M6bPGcUFqhOznSqTmTK5WnAqfRJgTdwnPNmrIoEtJZcAaPHZgrocGqT2Ge'
+    ENCODE_ASE_KEY = 'xxxxxx'
+    DING_TOKEN = 'xxxxxx'
 else:
     # 线上数据库及钉钉配置
-    DING_APPKEY = 'ding6zjpdmhpxyp6zskr'
-    DING_SECRET = 'Kc5m_nJdR-N-rvQvC96KYZcjF9U0gFQ6_HytAkofMxTUVqVxHPNP8LEgyTKfOHW2'
-    DING_AGENT_ID = 1428746030
-    ROBOT_ID = 'dingtgglrbw9nxhmobok'
+    DING_APPKEY = 'xxxxx'
+    DING_SECRET = 'xxxxx'
+    DING_AGENT_ID = 123456
+    ROBOT_ID = 'xxxxx'
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -158,8 +158,8 @@ else:
                 'init_command': 'SET default_storage_engine=INNODB,character_set_connection=UTF8MB4,collation_connection=utf8mb4_unicode_ci;'}
         }
     }
-    ENCODE_ASE_KEY = 'KPMMNTnLsqV3tVIre8fjkp8BilT2J7tPbgcUjlHydjl'
-    DING_TOKEN = 'M6bPGcUFqhOznSqTmTK5WnAqfRJgTdwnPNmrIoEtJZcAaPHZgrocGqT2Ge'
+    ENCODE_ASE_KEY = 'xxxxx'
+    DING_TOKEN = 'xxxxx'
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
@@ -366,10 +366,10 @@ CACHES = {
 }
 
 BASE_DN = "ou=nextop,dc=lumin,dc=top"
-AUTH_LDAP_SERVER_URI = "ldap://10.100.5.75:389"
+AUTH_LDAP_SERVER_URI = "ldap://111.111.11.1:389"
 
 AUTH_LDAP_BIND_DN = 'cn=it.readonly,ou=运维部,ou=产品中心,ou=nextop,dc=lumin,dc=top'
-AUTH_LDAP_BIND_PASSWORD = 'xOltynhlknpXKT!ZlL'
+AUTH_LDAP_BIND_PASSWORD = 'x10thyujisokXKT!ZlL'
 
 AUTH_LDAP_USER_SEARCH = LDAPSearch("ou=nextop,dc=lumin,dc=top",
                                    ldap.SCOPE_SUBTREE, "(uid=%(user)s)")
