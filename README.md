@@ -1,3 +1,3 @@
 # test_platform
 
-init
+暂时没空写
