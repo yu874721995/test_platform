@@ -1,6 +1,6 @@
 import json
 import datetime
-import requests
+import requests,pymysql
 from test_management import models
 import logging
 import decimal
@@ -8,7 +8,7 @@ import jwt
 from django.http import HttpResponse
 from functools import wraps
 from user.models import Role_Jurisdiction, UserRole,User
-
+from test_management import models as manage_models
 logger = logging.getLogger(__name__)
 
 def get_k8s_list():
@@ -45,28 +45,24 @@ def json_request(request, parmes, type=str, not_null=True, default=None):
     :param not_null: 是否允许为''字符串，默认允许
     :return:
     '''
-    try:
-        body = json.loads(request.body)
-        if body.__contains__(parmes):
-            if body[parmes] == '' or body[parmes] == 'null' or body[parmes] == 'None' or body[parmes] == None:
-                if not not_null:
-                    return default
-                return ''
-            if type in [dict, list, tuple]:
-                if isinstance(body[parmes], type):
-                    return body[parmes]
-                return eval(body[parmes])
+    body = json.loads(request.body)
+    if body.__contains__(parmes):
+        if body[parmes] == '' or body[parmes] == 'null' or body[parmes] == 'None' or body[parmes] == None:
+            if not not_null:
+                return default
+            return ''
+        if type in [dict, list, tuple]:
             if isinstance(body[parmes], type):
                 return body[parmes]
-            else:
-                try:
-                    return type(body[parmes])
-                except Exception as e:
-                    raise ValueError('{}参数转换失败:{},原因：{}'.format(parmes, body[parmes], str(e)))
+            return eval(body[parmes])
+        if isinstance(body[parmes], type):
+            return body[parmes]
         else:
-            return default
-    except Exception as e:
-        logger.error(str(e))
+            try:
+                return type(body[parmes])
+            except Exception as e:
+                raise ValueError('{}参数转换失败:{},原因：{}'.format(parmes, body[parmes], str(e)))
+    else:
         return default
 
 
@@ -119,6 +115,8 @@ def request_verify(request_method: str, need_params=None, check_params=None):
                         for check_param_name in check_params.keys():
                             if not params.__contains__(check_param_name):
                                 continue
+                            if params[check_param_name] == None:
+                                continue
                             try:
                                 check_params[check_param_name](
                                     params.get(check_param_name))
@@ -154,6 +152,8 @@ def request_verify(request_method: str, need_params=None, check_params=None):
                     if check_params:
                         for check_param_name in check_params.keys():
                             if not real_request_params.__contains__(check_param_name):
+                                continue
+                            if real_request_params[check_param_name] == None:
                                 continue
                             try:
                                 check_params[check_param_name](
@@ -206,3 +206,113 @@ def AuthJurisdiction(jurisdictionId:int):
 
     return decorator
 
+
+#/**更新账号token  wangmingmng 2023-08-09**/
+def updateToken(ids=[]):
+    if ids==[]:
+        #id不传，更新所有账号
+        account_lists = tuple(manage_models.ErpAccount.objects.filter(status=1, is_del=1).values())
+    else:
+        #id有传值，只更新id对应的账号
+        account_lists=()
+        for id  in ids: 
+            account_list = tuple(manage_models.ErpAccount.objects.filter(status=1, is_del=1,id=id).values())
+            account_lists=account_lists+account_list
+            logger.info('需要更新token的账号id为:{}'.format(id))
+    logger.info('需要更新token的账号信息:{}'.format(account_lists))
+    r = requests.session()
+    for accountquery in account_lists:
+        config_json = accountquery['config_json']
+        config_id = accountquery['config_id']
+        try:
+            env_conf_headers = eval(manage_models.system_config.objects.get(id=config_id).ext.replace('null','None'))['headers']
+            if config_json:
+                config_json = eval(config_json)
+            else:
+                logger.error('账号配置信息错误')
+                continue
+            account_name,method, data, url, content_type = \
+                accountquery['account_name'],config_json['method'], config_json['login_body'], config_json['login_url'], \
+                config_json['content-type']
+            if method == 'GET':
+                login = r.get(url, params=data)
+            else:
+                if content_type == 'data':
+                    login = r.post(url, data=data)
+                else:
+                    login = r.post(url, json=data)
+            if login.status_code < 400 and (r.cookies or login.json()):
+                if env_conf_headers and env_conf_headers != {}:
+                    for key in env_conf_headers.keys():
+                        if env_conf_headers[key] and env_conf_headers[key][0] != '$':  # 如果headers中的key有值，且开头字符不等于$时，无需特殊处理
+                            continue
+                        else:
+                            if key == 'cookie':
+                                cookie_dict = requests.utils.dict_from_cookiejar(r.cookies)
+                                env_conf_headers[key] = ''
+                                for i in cookie_dict.keys():
+                                    env_conf_headers[key] += '{}={};'.format(i, cookie_dict[i])
+                            #旧逻辑兼容个别业务线，sso上线后不需要了
+                            # elif config_id == 44 and key != 'cookie':
+                            #     cookie_dict = requests.utils.dict_from_cookiejar(r.cookies)
+                            #     env_conf_headers[key] = ''
+                            #     for i in cookie_dict.keys():
+                            #         if i == 'token':
+                            #             env_conf_headers[key] = cookie_dict[i]
+                            else:  # 如果key不为cookie，且没有默认值，则从接口返回值中循环层级取
+                                relist = env_conf_headers[key][1:].split('.')
+                                resp = login.json()
+                                for header_key in relist:
+                                    resp = resp[header_key]
+                                #旧逻辑，兼容以前个别业务线Authorization 需要加 Bearer
+                                # if key == 'Authorization':
+                                #     if config_id in [36,48]:
+                                #         env_conf_headers[key] = 'Bearer ' + resp
+                                #     else:
+                                #         env_conf_headers[key] = resp
+                                # else:
+                                env_conf_headers[key] = resp
+                                logger.info('----------------------------:{}'.format(env_conf_headers,resp))
+            else:
+                logger.error('更新cookie数据失败：{}'.format(account_name))
+                continue
+            try:
+                manage_models.ErpAccount.objects.filter(id=accountquery['id']).update(
+                    headers=env_conf_headers,
+                )
+                logger.info(env_conf_headers)
+                logger.info('更新erp成功：{}'.format(account_name))
+            except Exception as e:
+                logger.error('更新cookie数据失败：{},失败原因:{}'.format(account_name, str(e)))
+                continue
+        except Exception as e:
+            logger.error('未获取到cookie，账号account：{}'.format(account_name))
+            logger.error('{}'.format(e))
+            continue
+        r.cookies.clear()  # 清除实例的旧cookie
+def dingUser(principal_code=None):#查询钉钉账号信息
+    conn = pymysql.connect(host="mysql.sit.yintaerp.com",
+                           port=3306,
+                           user="yt_csms",
+                           passwd="thio2ooPhau",
+                           db='yt_csms',
+                           charset='utf8')
+    cursor = conn.cursor()
+    try:
+        if principal_code==None:
+            sql="select id,user_code as principal_code,user_name as principal_name from t_company_staff_data where is_delete=0 and user_code is not null and user_code !=''"
+        else:
+            sql = "select id,user_code as principal_code,user_name as principal_name from t_company_staff_data where is_delete=0 and user_code is not null and user_code !='' and user_code='{}' limit 1".format(principal_code)
+        cursor.execute(sql)
+        result=cursor.fetchall()
+        cursor.close()
+        conn.close()
+        rows = [list(i) for i in result]
+        columns = [i[0] for i in cursor.description]
+        json_data = []
+        for row in rows:
+            json_data.append(dict(zip(columns, row)))
+        logger.info('查询结果{}'.format(str(json_data)))
+    except Exception as e:
+        logger.error('查询失败{}'.format(e))
+    return json_data

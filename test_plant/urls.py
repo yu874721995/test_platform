@@ -23,6 +23,11 @@ urlpatterns = [
     path(r"test_plant_list", TestPlantView.plant_list),
     path(r"test_plant_excu_list", TestPlantView.plant_executions_list),
     path(r"delete_plant", TestPlantView.delete),
+    path(r"PlantCaseList", TestPlantView.PlantCaseList),
+    path(r"checkReportStatus",TestPlantView.checkReportStatus),
+    path(r"execution_one_plant", TestPlantView.execution_one),
+
+
 
 ]
 # work()

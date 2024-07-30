@@ -9,12 +9,12 @@ from django.utils import timezone
 from test_management.common import json_request, DateEncoder, jwt_token, request_verify
 from django.db.models import Q
 from test_tools.task import updateBuildStauts
-from test_plant.common import add_job
 from test_plant.task import scheduler
-from test_tools.task import websocketPage
-from django_apscheduler.models import DjangoJob
 from channels.generic.websocket import AsyncWebsocketConsumer
 import json
+from test_tools.jenkins_task import websocketPage
+from test_plant.common import add_job
+from django_apscheduler.models import DjangoJob
 
 logger = logging.getLogger(__name__)
 
@@ -430,20 +430,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_discard(
             self.room_group_name,
             self.channel_name)
-        if DjangoJob.objects.filter(id='web_socket_push_{}'.format(self.userId)).exists():
+        if DjangoJob.objects.filter(id='web_socket_push_{}'.format(self.userId)).exists(): #断开连接时清除任务
             scheduler.remove_job('web_socket_push_{}'.format(self.userId))
 
     async def receive(self, text_data=None, bytes_data=None):  # 接收消息时触发
         text_data_json = eval(json.loads(text_data))
-        message = text_data_json
-        add_job(websocketPage, 'web_socket_push_{}'.format(self.userId), 'interval', {'weeks': 0,
-                                                                                      'days': 0, 'hours': 0,
-                                                                                      'minutes': 0,
-                                                                                      'seconds': 5},
-                [message, self.userId, ])
+        message = text_data_json #创建定时任务，每5秒通知前端更新页面状态
+        # add_job(websocketPage, 'web_socket_push_{}'.format(self.userId), 'interval', {'weeks': 0,
+        #                                                                               'days': 0, 'hours': 0,
+        #                                                                               'minutes': 0,
+        #                                                                               'seconds': 5},
+        #         [message, self.userId, ])
 
     async def system_message(self, event):
-        print(event)
         message = event['message']
 
         await self.send(text_data=json.dumps({

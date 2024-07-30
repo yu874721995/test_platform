@@ -44,7 +44,6 @@ def cases_page(request):
     query = Q()
     project_id = request.data.get("projectId")
     if project_id:  # 如果传了用例id
-        # print(project_id, type(project_id))
         query &= Q(project_id=project_id)
     create_user = request.data.get("create_user")
     if create_user:  # 如果传了接口路径
@@ -57,7 +56,6 @@ def cases_page(request):
         query_m = Q()
         for module in modules:
             if len(module) == 1:
-                print('[' + str(module[0]) + ',')
                 query_m |= Q(module__icontains='[' + str(module[0]) + ',')
             else:
                 query_m |= Q(module__icontains=module)
@@ -83,10 +81,6 @@ def cases_page(request):
 class CaseGroupViewSet(ModelViewSet):
     queryset = CaseGroup.objects.all()
     serializer_class = CaseGroupSerializer
-    # group_code = Case.objects.filter(group_code=None)
-    # for i in group_code:
-    #     get_code(i)
-    # print(group_code)
 
     def list(self, request, *args, **kwargs):
         # project_id = request.GET.get('projectId')
@@ -129,7 +123,6 @@ class CaseGroupViewSet(ModelViewSet):
         # code_list = Case.objects.filter(id__in=case_list).values('group_code')  # 使用group_code
         combined_code = combined_case(code_list)
         CaseGroup.objects.filter(id=serializer.data['id']).update(code=combined_code)
-        print(type(serializer.data))
         return Response(data={"code": 10000, "msg": "组合用例创建成功"},
                         status=status.HTTP_201_CREATED, headers=headers)
 
@@ -147,15 +140,12 @@ class CaseGroupViewSet(ModelViewSet):
         # 通过用例id列表查询到用例id对应的code_list,调用组合代码的方法combined_case返回组合后的 用例代码
         case_list = request.data.get("caseId_list")
         if case_list:
-            print(case_list, "case_list")
             code_list = [Case.objects.filter(id=i)[0].group_code for i in case_list]
         else:
             return Response(data={"code": 50000, "msg": "请选择用例"})
         combined_code = combined_case(code_list)
-        # print("最终代码:\n", combined_code)
         # 使用filter().update更新 组合用例代码
         CaseGroup.objects.filter(id=serializer.data['id']).update(code=combined_code)
-        print(type(serializer.data))
         return MyResponse(msg="组合用例修改成功")
 
     def retrieve(self, request, *args, **kwargs):

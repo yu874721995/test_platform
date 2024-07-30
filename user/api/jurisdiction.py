@@ -8,10 +8,8 @@ import json
 import logging
 from django.http import HttpResponse
 from django.core.paginator import Paginator
-from test_management.common import json_request, DateEncoder, jwt_token, request_verify,AuthJurisdiction
-from user.models import Jurisdiction, Role,Role_Jurisdiction
-from django.db import transaction
-from django.db.models import Q
+from test_management.common import json_request, DateEncoder,  request_verify
+from user.models import Jurisdiction, Role_Jurisdiction
 
 logger = logging.getLogger(__name__)
 

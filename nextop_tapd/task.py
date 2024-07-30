@@ -4,6 +4,7 @@
 # @Time      :2021/12/29 15:19
 # @Author    :Careslten
 import json
+import logging
 import time
 
 from django.conf import settings
@@ -58,12 +59,16 @@ def return_tapdSession():
 def get_tapd_pro():
     r = return_tapdSession()[0]
     url = 'https://www.tapd.cn/api/aggregation/user_and_workspace_aggregation/get_user_and_workspace_basic_info?workspace_id=32444113'
-    data = r.get(url).json()['data']['my_projects_ret']['data']['my_project']['recently']
+    try:
+        data = r.get(url).json()['data']['my_projects_ret']['data']['my_project']['recently']
+    except Exception as e:
+        logging.error('tapd信息获取失败')
+        return []
     return data
 
 
 
-@registe_job(task_name='爬取tapd项目需求')
+# @registe_job(task_name='爬取tapd项目需求')
 def tapd_demand():
     '''
     爬取所有tapd项目需求
@@ -183,7 +188,7 @@ def tapd_demand():
                 continue
 
 
-@registe_job(task_name='爬取tapd项目bug')
+# @registe_job(task_name='爬取tapd项目bug')
 def tapd_bug():
     '''
     爬取所有tapd项目bug
@@ -276,7 +281,7 @@ def tapd_bug():
             num += 1
 
 
-@registe_job(task_name='爬取tapd项目迭代')
+# @registe_job(task_name='爬取tapd项目迭代')
 def tapd_iteration():
     '''
     拉取所有迭代信息
@@ -351,7 +356,7 @@ def tapd_iteration():
         models.push_chatroom_config.objects.filter(iteration_id=query['iteration_id']).update(status='2')
 
 
-@registe_job(task_name='tapd每日待办推送')
+# @registe_job(task_name='tapd每日待办推送')
 def dingding_everyday_push():
     '''
     每日统计推送
@@ -415,7 +420,7 @@ def dingding_everyday_push():
                 logger.info('{}每日汇总消息发送成功'.format(name))
 
 
-@registe_job(task_name='更新tapd项目配置')
+# @registe_job(task_name='更新tapd项目配置')
 def update_project_and_maillist():
     r = return_tapdSession()[0]
     # tapd_project = return_tapdSession()[1]
@@ -430,7 +435,7 @@ def update_project_and_maillist():
     }, name='Tapd_project')
 
 
-@registe_job(task_name='每日风险提醒')
+# @registe_job(task_name='每日风险提醒')
 def every_day_chatroom_push():
     '''
     根据配置的迭代触发风险提醒
@@ -573,7 +578,7 @@ def every_day_chatroom_push():
                 logger.info('{}迭代提醒消息发送成功'.format(data['iteration_name']))
 
 
-@registe_job(task_name='爬取tapd项目测试计划')
+# @registe_job(task_name='爬取tapd项目测试计划')
 def tapd_testPlant():
     '''
     获取测试计划
@@ -646,7 +651,7 @@ def tapd_testPlant():
     models.tapd_testPlant.objects.filter().exclude(plant_big_id__in=plant_list).update(is_del='2')
 
 
-@registe_job(task_name='推送延期需求通知')
+# @registe_job(task_name='推送延期需求通知')
 def demand_statusPush():
     '''
     推送已延期需求
@@ -698,7 +703,7 @@ def demand_statusPush():
                             logger.info('{}迭代需求延期提醒消息发送成功'.format(demand['demand_name']))
 
 
-@registe_job(task_name='绑定测试推送webhock配置')
+# @registe_job(task_name='绑定测试推送webhock配置')
 def go():
     '''
     把所有开启的迭代都配上
@@ -721,7 +726,7 @@ def go():
         models.push_chatroom_config.objects.update_or_create(**dic)
     models.push_chatroom_config.objects.filter().exclude(iteration_id__in=lists).update(status='2')
 
-@registe_job(task_name='bug收敛风险提醒')
+# @registe_job(task_name='bug收敛风险提醒')
 def bug_risk_push():
     webhook_url = 'https://oapi.dingtalk.com/robot/send?access_token=f93ec8c895721bade573b008f6286f68387cefe13011e5e5ff0650b5d39d2f5d'
     iterations = models.tapd_iteration_status.objects.filter(is_del=1, iteration_status='开启').values()
@@ -848,13 +853,13 @@ def draw_trend_chart(dates, y, times, demand_name):
 def ding_userList():
     r = return_tapdSession()[0]
     # tapd_project = return_tapdSession()[1]
-    url = 'https://internal.nextop.com/backgroundUser/user/pageList'
+    url = 'https://service.erp-sit.yintaerp.com/csms/common/getCompanyStaffData'
     data = {
         "currentPage": 1,
         "pageSize": 1000,
         "param": {}
     }
-    re = r.post(url,json=data).json()
+    re = requests.post(url,json=data).json()
     if re.__contains__('data'):
         userlist = re['data']['records']
         for user in userlist:
@@ -891,7 +896,7 @@ def ding_userList():
     else:
         logger.error('同步钉钉通讯录接口报错：{}'.format(re))
 
-@registe_job(task_name='定时更新tapd映射昵称')
+# @registe_job(task_name='定时更新tapd映射昵称')
 def tapd_for_ding():
     '''
     匹配tapd的nickname和钉钉名称
@@ -934,7 +939,7 @@ def tapd_for_ding():
                     logger.error("更新tapd昵称失败，失败原因:{}".format(str(e)))
         logger.info('{}项目更新完毕'.format(project_name))
 
-@registe_job(task_name='获取测试计划详情及绑定的测试用例')
+# @registe_job(task_name='获取测试计划详情及绑定的测试用例')
 def tapd_get_TestCase():
     r = return_tapdSession()[0]
     # tapd_project = return_tapdSession()[1]
@@ -1042,7 +1047,7 @@ def tapd_get_TestCase():
     for update_demand in update_demand_list:
         models.tapd_demand_status.objects.filter(demand_all_id=update_demand['demand_all_id']).update(plant_id=update_demand['plant_id'])
 
-@registe_job(task_name='测试质量统计')
+# @registe_job(task_name='测试质量统计')
 def update_bug_statistic():
     plant_querys = tapd_models.tapd_testPlant.objects.filter(is_del=1,plant_status='开启').values().order_by('project_id')
     delete_plant_id = []

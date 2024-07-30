@@ -21,7 +21,7 @@ class User(AbstractUser):
         db_table = "user"
 
     REQUIRED_FIELDS = []  # 让Django默认必填的邮箱变成非必填
-    name = models.CharField("昵称", null=True, max_length=200, default=None)
+    name = models.CharField("中文昵称", null=True, max_length=200, default=None)
     mail_id = models.IntegerField("钉钉映射", null=True,default=None)
     phone = models.CharField("手机号码", null=True, max_length=200, default=None)
     usericon = models.CharField("头像", null=True, max_length=200, default=None)

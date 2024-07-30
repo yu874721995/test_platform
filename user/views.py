@@ -1,4 +1,5 @@
 # Create your views here.
+# import json
 from datetime import datetime
 
 import jwt
@@ -33,10 +34,28 @@ class UserLogin(JSONWebTokenAPIView):
     def post(self, request, *args, **kwargs):
         username = request.data.get("username")
         password = request.data.get("password")
+        # from django.http import HttpResponse
+        # return HttpResponse(json.dumps(
+        #     {
+        #         "code": 10000,
+        #         "msg": "登录成功",
+        #         "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjoyLCJ1c2VybmFtZSI6Inl1YmVpIiwiZXhwIjoxNzA3MzAxNDEwLCJlbWFpbCI6Inl1YmVpQHlpbnRhdGVjaC5jb20iLCJvcmlnX2lhdCI6MTcwNDcwOTQxMH0.uLccGu8taW73Iap97nTC4AapfXaZmyGiJZFRJBhZ6CY",
+        #         "user": {
+        #             "id": 2,
+        #             "username": "yubei",
+        #             "roleName": "测试、管理员",
+        #             "email": "yubei@yintatech.com",
+        #             "name": "余孛",
+        #             "usericon": "https://img1.baidu.com/it/u=1371756451,2408220877&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500",
+        #             "drep": "1"
+        #         }
+        #     }
+        # ))
         serializer = self.get_serializer(data=request.data)
         ldap_user = authenticate(username=username, password=password)
+        logger.info('{}'.format(str(ldap_user)))
         if ldap_user:
-            logger.info('ldap校验返回登录人员：{}'.format(ldap_user.name))
+            logger.info('ldap校验返回登录人员：{}'.format(ldap_user))
             # ----------------- 复用代码开始 -----------------
             if serializer.is_valid():
                 user = serializer.object.get('user') or request.user
@@ -50,6 +69,11 @@ class UserLogin(JSONWebTokenAPIView):
                     drep = mailSet['ding_drep']
                     phone = mailSet['ding_phone']
                     User.objects.filter(id=ldap_user.id).update(mail_id=mail_id,usericon=usericon,drep=drep,phone=phone)#每次登录更新用户信息
+                if not UserRole.objects.filter(user_id=ldap_user.id).exists():
+                    UserRole.objects.create(**{
+                        'user_id':ldap_user.id,
+                        'role_id':3
+                    })
                 response_data = jwt_response_payload_handler(token, user, request)
                 response = Response(response_data)
                 if api_settings.JWT_AUTH_COOKIE:

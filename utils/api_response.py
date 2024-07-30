@@ -41,5 +41,4 @@ class MyThread(Thread):
         try:
             return self.result
         except Exception as e:
-            print(e)
             return None

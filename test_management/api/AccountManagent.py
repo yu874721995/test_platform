@@ -27,6 +27,10 @@ class AccountSetView():
     @classmethod
     @request_verify('post',{'account':int,'project_id':int,'password':str,'env':str})
     def checkAccount(cls,request):
+        return HttpResponse(json.dumps({
+            'code': 10005,
+            'msg': '该功能暂时不可用'
+        }))
         project_id = json_request(request, 'project_id', int)
         account = json_request(request, 'account', int)
         password = json_request(request, 'password')

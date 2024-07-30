@@ -43,7 +43,7 @@ def create_scaffold(project_name):
         print(msg)
     create_folder(project_name)
     create_folder(os.path.join(project_name, "fixtures"))
-    create_folder(os.path.join(project_name, "test_case"))
+    create_folder(os.path.join(project_name, "case"))
     create_folder(os.path.join(project_name, "test_case_group"))
     create_folder(os.path.join(project_name, "test_cases"))
     create_folder(os.path.join(project_name, "test_cases_group"))
@@ -56,7 +56,7 @@ def create_scaffold(project_name):
     create_file(os.path.join(project_name, "fixtures", "__init__.py"))
     # 创建项目时默认写入的 fixture_env_vars 文件
     create_file(os.path.join(project_name, "fixtures", "fixture_env_vars.py"), fixture_env_vars_content)
-    create_file(os.path.join(project_name, "test_case", "__init__.py"))
+    create_file(os.path.join(project_name, "case", "__init__.py"))
     create_file(os.path.join(project_name, "test_case_group", "__init__.py"))
     create_file(os.path.join(project_name, "test_cases", "__init__.py"))
     create_file(os.path.join(project_name, "test_cases_group", "__init__.py"))

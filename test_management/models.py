@@ -21,13 +21,13 @@ class ErpAccount(models.Model):
     id = models.AutoField(primary_key=True, blank=False)
     status = models.IntegerField(default=1,null=False,blank=False,verbose_name="启用状态")
     project_id = models.IntegerField(default="", verbose_name="项目id")
-    account = models.TextField(default="", verbose_name="账号")
     account_name = models.CharField(max_length=200, default="", verbose_name="账号别名")
-    password = models.CharField(max_length=200, default="", verbose_name="密码")
-    env = models.CharField(max_length=200, default="", verbose_name="环境")
-    cookie = models.TextField(verbose_name="cookie")
-    tenant = models.TextField(default="",verbose_name="tenant")
-    tenantId = models.CharField(default='',max_length=200,null=False,blank=False,verbose_name="绑定默认租户id")
+    env = models.IntegerField(default=None, verbose_name="环境id")
+    host = models.CharField(max_length=200, default=None, verbose_name="环境对应host")
+    config_id = models.IntegerField(default=None, verbose_name="配置id")
+    config_json = models.TextField(default=None, verbose_name="配置信息")
+    body = models.CharField(max_length=200, default=None, verbose_name="登录body")
+    headers = models.TextField(default=None, verbose_name="接口请求的headers")
     is_del = models.IntegerField(default=1,null=False,blank=False,verbose_name="是否删除")
     creator = models.CharField(max_length=200, default="admin", verbose_name="创建人")
     create_time = models.DateTimeField(auto_now=True,verbose_name='创建时间')
@@ -54,6 +54,28 @@ class envList(models.Model):
     update_time = models.DateTimeField(auto_now=True,verbose_name='更新时间')
     status = models.IntegerField(default=1,verbose_name="是否删除")
 
+class env(models.Model):
+    id = models.AutoField(primary_key=True, blank=False)
+    status = models.IntegerField(null=False,default=1,verbose_name="是否删除 1-正常 2-删除")
+    project_id = models.IntegerField(null=False,verbose_name="所属项目")
+    lable_name = models.IntegerField(default=1,verbose_name="所属环境 1-测试，2-预发",)
+    env_name = models.CharField(max_length=200, default="", verbose_name="环境名称")
+    env_url = models.CharField(max_length=200, default="", verbose_name="环境对应host")
+    sql_conf = models.IntegerField(default=1, verbose_name="环境对应数据库配置")
+    updater = models.IntegerField(default=1,verbose_name="最后编辑人")
+    update_time = models.DateTimeField(auto_now=True,verbose_name='更新时间')
+
+class mysql_conf(models.Model):
+    id = models.AutoField(primary_key=True, blank=False)
+    status = models.IntegerField(null=False, default=1, verbose_name="是否删除 1-正常 2-删除")
+    host = models.CharField(max_length=200, default="", verbose_name="环境名称")
+    user = models.CharField(max_length=200, default="", verbose_name="环境名称")
+    password = models.CharField(max_length=200, default="", verbose_name="环境名称")
+    database = models.CharField(max_length=200, default="", verbose_name="环境名称")
+    port = models.IntegerField(default=3306, verbose_name="port")
+    env = models.IntegerField(null=False, default=1, verbose_name="1-测试 2-预发")
+
+
 class projectMent(models.Model):
     class Meta:
         db_table = 'projectMent'
@@ -61,6 +83,8 @@ class projectMent(models.Model):
     project_name = models.CharField(max_length=200, default="", verbose_name="项目名称")
     host = models.CharField(max_length=200, default="", verbose_name="项目host")
     remark = models.CharField(max_length=200, default="", verbose_name="项目描述")
+    principal_code = models.CharField(max_length=200, default="", verbose_name="责任人code")
+    principal_name = models.CharField(max_length=200, default="", verbose_name="责任人姓名")
     creator = models.CharField(max_length=200, default="admin", verbose_name="创建人")
     create_time = models.DateTimeField(auto_now=True, verbose_name='创建时间')
 

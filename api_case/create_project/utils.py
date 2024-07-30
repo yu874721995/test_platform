@@ -21,7 +21,6 @@ def request_log(req, *args, **kwargs):
             elif 'json' in k or 'params' in k:
                 params = v
         log_dict = {"url": url, "params": params, "response": response.json()}
-        # print(type(log_dict))
         print(json.dumps(log_dict, ensure_ascii=False))  # 用例里面的url，参数， 返回结果打印，不可删除
     except AttributeError:
         logger.error("request failed")

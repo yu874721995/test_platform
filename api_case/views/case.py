@@ -54,7 +54,6 @@ def case_page(request):
         query_m = Q()
         for module in modules:
             if len(module) == 1:
-                print('[' + str(module[0]) + ',')
                 query_m |= Q(module__icontains='[' + str(module[0]) + ',')
             else:
                 query_m |= Q(module__icontains=module)
@@ -90,7 +89,6 @@ class CaseViewSet(ModelViewSet):
             try:
                 assembly = Assembly_line.objects.get(id=request.data.get("assembly_id"))
                 request.data["job_podid"] = f" http://{assembly.popId}:9999/"  # http://10.244.17.232',
-                # print(request.data["job_podid"])
             except Exception as e:
                 print("获取流水线失败", e)
         # 没有加断言，自动加上业务断言 000000
@@ -115,7 +113,6 @@ class CaseViewSet(ModelViewSet):
             try:
                 assembly = Assembly_line.objects.get(id=request.data.get("assembly_id"))
                 request.data["job_podid"] = f" http://{assembly.popId}:9999/"  # http://10.244.17.232',
-                # print(request.data["job_podid"])
             except Exception as e:
                 print("获取流水线失败", e)
         else:
@@ -266,10 +263,8 @@ def swagger_convert(request):  # swagger 接口 单条转换用例接口
     res_list = []
     case_only_api = Case.objects.filter(only_api=only_api, tag=1)  # 匹配查找用例的唯一接口名
     if case_only_api:  # 用例里面已有相同接口
-        # print("查询到已有的用例数量：", len(case_only_api), case_only_api)
         for case in case_only_api:  # 循环相同接口的 多条用例
             exist_data = case.single_body
-            # print(exist_data, type(exist_data), case.id)
             exist_data = eval(exist_data) if exist_data else {}  # 把 数据库取出来的用例参数转成 字典
             result = list(diff(exist_data, single_body))  # 原用例参数与 新参数对比，相等时取新参数
             flag = False
@@ -292,7 +287,6 @@ def swagger_convert(request):  # swagger 接口 单条转换用例接口
                 serializer = CaseCodeSerializer(case, data=req_data)
                 serializer.is_valid(raise_exception=True)
                 serializer.save()
-                print(serializer.data["id"])
             else:  # 没有新增或者移除的
                 res_list.append(f"用例id {case.id}  与接口id {req_data['id']}参数一致，不做改动")
     else:  # 用例里面没有该接口，直接保存

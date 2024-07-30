@@ -13,8 +13,7 @@ def jwt_response_payload_handler(token, user=None, request=None):
     # 自定义响应体
     # role_id = UserRole.objects.get(user_id=user.id).role_id  # 获取角色id
     userDatail = UserLoginSerializer(user).data
-    if userDatail['usericon'] == None or userDatail['usericon'] == '':
-        userDatail['usericon'] = 'https://img1.baidu.com/it/u=1371756451,2408220877&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500'
+    userDatail['usericon'] = 'https://img1.baidu.com/it/u=1371756451,2408220877&fm=253&fmt=auto&app=138&f=JPEG?w=500&h=500'
     return {
         "code":10000,
         'msg':'登录成功',

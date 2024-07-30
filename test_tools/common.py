@@ -1,14 +1,28 @@
-import requests
-import base64
+# -*- coding : utf-8 -*-
+# @Auther    : Careslten
+# @time      : 2021/4/9 17:47
+# @File      : __init__.py.py
+# @SoftWare  : dengta_api_test
+import os.path,dictdiffer,platform,requests,base64,pymysql,time,logging,re,gitlab
+
+import git
+import jenkins
+import xlsxwriter as xw
 from test_tools import models
-import time
-import logging
+from test_tools.models import DataComparisonResult
 from django.utils import timezone
 from test_plant.task import scheduler
-import re
-import gitlab
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
+from test_management.models import env,mysql_conf
+from pymysql import cursors
+from django.db import transaction
+import django.db as db
+from utils.common import S3_client
+from nextop_tapd.models import mail_list
+
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -55,14 +69,26 @@ def keys(userKey):
 
 
 def reload_xxjob_cookie(env='test'):
-    url = 'http://xxljob-{}.nextop.cc/xxl-job-admin/login'.format(env)
-    data = {
-        'userName': 'admin',
-        'password': 'wlbjdyWHYAVd2EBI'
-    }
+    if env == "test":
+        url = "http://xxl-job-admin.erp-sit.yintaerp.com/xxl-job-admin/login"
+        data_map = {
+
+                'userName': 'demo',  # os.environ.get("test_user", "")
+                'password': 'yintadev@!'
+
+        }
+    else:
+        url = 'http://xxl-job-admin.erp-uat.yintaerp.com/xxl-job-admin/login'
+        data_map = {
+
+                'userName': 'admin',  # os.environ.get("test_user", "")
+                'password': '123456'
+
+        }
+
     r = requests.session()
     r.headers.setdefault('content-type', 'application/x-www-form-urlencoded; charset=UTF-8')
-    rsp = r.post(url, data=data)
+    rsp = r.post(url, data=data_map)
     if rsp.status_code == 200:
         if rsp.json()['code'] == 200:
             return r
@@ -199,6 +225,37 @@ def build(req, Assembly, is_checkAudit):
     else:
         raise ValueError('构建失败:{}'.format(Assembly_name))
 
+def jenkins_build(job_name,build_parmes,username,userkey):
+    if 'prod' in build_parmes['deployenv']:
+        url = 'https://jenkins.yintaerp.com/'
+    else:
+        url = 'https://newjenkins.yintaerp.com/'
+    base_config = {
+        'url': url,
+        'username': username,
+        'password': userkey
+    }
+    logger.info('build_job:{},build_parmes:{},build_user:{},build_pass:{}'.format(job_name,build_parmes,username,userkey))
+    jenkins_server = jenkins.Jenkins(**base_config)
+    parmes = {}
+    for parme in list(build_parmes.keys()):
+        if build_parmes[parme] != '':
+            parmes[parme] = build_parmes[parme]
+        if parme == 'branch2':
+            if build_parmes['branch2'] == '':
+                parmes['branch2'] = parmes['branch']
+    #必填参数，必须要有
+    if not parmes.__contains__('branch2'):
+        parmes['branch2'] = parmes['branch']
+    logger.info('发送构建请求，构建参数：{}'.format(parmes))
+    try:
+        job_id = jenkins_server.build_job(job_name,parmes)
+        logger.info('build成功，build_id：{}'.format(job_id))
+    except:
+        jenkins_server = jenkins.Jenkins(**base_config)
+        job_id = jenkins_server.build_job(job_name, parmes)
+        logger.info('build成功，build_id：{}'.format(job_id))
+    return job_id
 
 def Audit(req, Assembly, examine_status='PROCESS'):
     Assembly_name = Assembly['Assembly_name']
@@ -261,7 +318,7 @@ class GitOperationLibraryRemote():
         :param projectName:
         :return:项目对象
         '''
-        return self.gl.projects.list(search=projectName)
+        return self.gl.projects.list(search=projectName,order_by='last_activity_at')
 
     def branchs(self, project):
         '''
@@ -353,3 +410,187 @@ def send_group_msg(room_name, message):
             "message": message,
         }
     )
+
+def xw_toExcel(datas,title,fileName):  # xlsxwriter库储存数据到excel
+    workbook = xw.Workbook(fileName)  # 创建工作簿
+    worksheet1 = workbook.add_worksheet("sheet1")  # 创建子表
+    worksheet1.activate()  # 激活表
+    title = title  # 设置表头
+    worksheet1.write_row('A1', title)  # 从A1单元格开始写入表头
+    i = 2  # 从第二行开始写入数据
+    for data in datas:
+        data = [str(i) for i in data]
+        row = 'A' + str(i)
+        worksheet1.write_row(row, data)
+        i += 1
+    workbook.close()
+
+def DataComparisonForField(item,seItem,Fields):
+    if isinstance(Fields,list):
+        for Field in Fields:
+            if Field in item.keys() and Field in seItem.keys():
+                if item[Field] != seItem[Field]:
+                    return False
+            else:
+                return False
+        return True
+    else:
+        if Fields in item.keys() and Fields in seItem.keys():
+            if item[Fields] != seItem[Fields]:
+                return False
+            else:
+                return True
+        else:
+            return False
+
+
+
+def DataComparisonTask(DataComparisonResultId):
+    db.close_old_connections()
+    '''执行对比的定时任务'''
+    re_num = 0
+    while re_num<10:
+        time.sleep(5)
+        logger.info('尝试根据记录id执行任务：第{}次尝试'.format(re_num))
+        try:
+            with transaction.atomic():
+                if DataComparisonResult.objects.filter(id=DataComparisonResultId).exists():
+                    DataComparisonResultQuery = DataComparisonResult.objects.get(id=DataComparisonResultId)
+                    primary_sql = DataComparisonResultQuery.primary_sql
+                    secondary_sql = DataComparisonResultQuery.secondary_sql
+                    associated_field = DataComparisonResultQuery.associated_field
+                    env_id = DataComparisonResultQuery.env
+                    secondary_env_id = DataComparisonResultQuery.secondary_env
+                    creator = DataComparisonResultQuery.creator
+                    pre_DataBaseConf = mysql_conf.objects.get(id = env.objects.get(id=env_id).sql_conf)
+                    se_DataBaseConf = mysql_conf.objects.get(id=env.objects.get(id=secondary_env_id).sql_conf)
+                    #初始化主sql连接
+                    pre_db = pymysql.connect(host=pre_DataBaseConf.host,
+                                                  user=pre_DataBaseConf.user,
+                                                  password=pre_DataBaseConf.password,
+                                                  database=pre_DataBaseConf.database,
+                                                  port=pre_DataBaseConf.port,
+                                                  cursorclass=cursors.DictCursor,
+                                                    connect_timeout=1000)
+                    pre_db.set_charset('utf8')
+                    pre_cursor = pre_db.cursor()
+                    pre_cursor.execute(primary_sql)
+                    primary_datas = pre_cursor.fetchall()#主sql查询出来的数据
+                    pre_db.close()
+                    # 初始化副sql连接
+                    se_db = pymysql.connect(host=se_DataBaseConf.host,
+                                             user=se_DataBaseConf.user,
+                                             password=se_DataBaseConf.password,
+                                             database=se_DataBaseConf.database,
+                                             port=se_DataBaseConf.port,
+                                             cursorclass=cursors.DictCursor,
+                                            connect_timeout=1000)
+                    se_db.set_charset('utf8')
+                    se_cursor = se_db.cursor()
+                    se_cursor.execute(secondary_sql)
+                    secondary_datas = se_cursor.fetchall()#副sql查询出来的数据
+                    se_db.close()
+
+                    #如果包含多个关联字段则associated_field为list
+                    if ',' in associated_field:
+                        associated_field = associated_field.split(',')
+                    datas = []
+                    pr_dic = {}
+                    se_dic = {}
+                    for item in primary_datas:
+                        key = ''
+                        try:
+                            if isinstance(associated_field, list):
+                                for field in associated_field:
+                                    key += str(item[field])+'|'
+                            else:
+                                key = item[associated_field]
+                            pr_dic[key] = item
+                        except Exception as e:
+                            continue
+                    for item in secondary_datas:
+                        key = ''
+                        try:
+                            if isinstance(associated_field, list):
+                                for field in associated_field:
+                                    key += str(item[field])+'|'
+                            else:
+                                key = item[associated_field]
+                            se_dic[key] = item
+                        except Exception as e:
+                            continue
+
+                    for item in pr_dic.keys():
+                        if se_dic.__contains__(item):
+                            datas.append([item, list(dictdiffer.diff(pr_dic[item], se_dic[item]))])
+                        else:
+                            datas.append([item,'对比数据中无匹配的数据，匹配字段:{}，基准数据：{}'.format(associated_field, item)])
+                    s3_filepath = 'platform/DataComparison/{}_{}.xlsx'.format(creator,int(time.time()))
+                    if 'Linux' in platform.system():
+                        filename = '/static/DataComparison/{}_{}.xlsx'.format(creator,int(time.time()))
+                        filepath = '/opt/test-platform' + filename
+                    else:
+                        filename = '/static/DataComparison/{}_{}.xlsx'.format(creator, int(time.time()))
+                        filepath = '/'.join(os.path.abspath(os.path.dirname(__file__)).split('\\')[:-1]) + filename
+                    if primary_datas:
+                        xw_toExcel(datas,['关联数据','对比结果','原表数据:{}条,以关联条件去重后:{}条，副表数据:{}条,以关联条件去重后:{}条'.format(
+                            len(primary_datas),len(pr_dic.keys()),len(secondary_datas),len(se_dic.keys())
+                        )],filepath)
+                        S3_client().upload_single_file(filepath, s3_filepath)
+                        DataComparisonResult.objects.filter(id=DataComparisonResultId).update(
+                            **{
+                                'result':s3_filepath,
+                                'status':2
+                            }
+                        )
+                    else:#如果主数据查询结果为空，不做其他任何逻辑处理
+                        DataComparisonResult.objects.filter(id=DataComparisonResultId).update(
+                            **{
+                                'error_content':'主sql查询结果为空',
+                                'status': 3
+                            }
+                        )
+                    break
+        except Exception as e:
+            logger.error(str(e))
+            DataComparisonResult.objects.filter(id=DataComparisonResultId).update(
+                **{
+                    'status':3,
+                    'error_content':str(e)
+                }
+            )
+            break
+        re_num += 1
+def dingding(json):
+    '''
+    发送钉钉hock
+    :param config:
+    :param count:
+    :return:
+    '''
+    r = requests.post('https://service.erp-sit.yintaerp.com/csms/common/sendDingTalkMessage',json=json)
+    if r.json()['code'] == '200' or r.json()['code'] == 200:
+        logger.info('发送钉钉消息成功')
+        return True
+    else:
+        logger.error('发送钉钉消息失败')
+
+def getDingUserId(emails):
+    db.close_old_connections()
+    userId = [i['ding_userid']  for i in mail_list.objects.filter(email__in=emails).values()]
+    logger.info('获取执行人钉钉ID成功，执行人:{}'.format(emails))
+    return userId
+
+def getDubboAdminToken():
+    url = 'https://dubbo-admin.erp-sit.yintaerp.com/api/dev/user/login?userName=root&password=root'
+    data = {
+        'username':'root',
+        'paaword':'root'
+    }
+    r = requests.get(url,params=data)
+    token = r.text
+    rn = requests.session()
+    rn.headers = {
+        'Authorization':token
+    }
+    return rn

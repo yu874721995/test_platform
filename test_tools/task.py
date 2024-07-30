@@ -1,5 +1,6 @@
 import json
 import time
+from urllib.parse import urljoin
 
 from test_plant.task import registe_job
 from test_tools.common import reload_cookie, reload_xxjob_cookie
@@ -7,6 +8,7 @@ from test_tools import models
 from nextop_tapd import models as tapd_models
 import datetime
 import logging
+import django.db as db
 from django.utils import timezone
 from test_management.common import DateEncoder
 from bs4 import BeautifulSoup
@@ -14,6 +16,9 @@ from test_tools.common import GitOperationLibraryRemote
 from django.db.models import Q
 from django.core.paginator import Paginator
 from test_tools.common import send_group_msg
+from test_tools.common import getDubboAdminToken
+from test_case.models import DubboInterFaceService,DubboInterFaceMethod,DubboInterFaceMethodParmes
+from django.db import transaction
 
 logger = logging.getLogger(__name__)
 
@@ -261,11 +266,17 @@ def Synchronous_pipeline():
 
 @registe_job(task_name='同步所有xxjob')
 def Synchronous_xxjob():
-    r = reload_cookie()
+    db.close_old_connections()
     envs = ['test', 'pre']
     for env in envs:
-        r = reload_xxjob_cookie(env)
-        group_list_heml = r.get('http://xxljob-{}.nextop.cc/xxl-job-admin/jobinfo'.format(env)).text
+        if env == 'test':
+            r = reload_xxjob_cookie('test')
+            host = 'http://xxl-job-admin.erp-sit.yintaerp.com'
+        else:
+            r = reload_xxjob_cookie('pre')
+            host = 'http://xxl-job-admin.erp-uat.yintaerp.com'
+        url = urljoin(host, 'xxl-job-admin/jobinfo')
+        group_list_heml = r.get(url).text
         soup = BeautifulSoup(group_list_heml)
         options = soup.find_all(attrs={'id': 'jobGroup'})[0].find_all('option')
         for option in options:
@@ -277,7 +288,7 @@ def Synchronous_xxjob():
                     data['env'] = 2
                 data['group_id'] = int(option['value'])
                 data['group_name'] = option.text
-                page_url = 'http://xxljob-{}.nextop.cc/xxl-job-admin/jobinfo/pageList'.format(env)
+                page_url = urljoin(host, 'xxl-job-admin/jobinfo/pageList')
                 page_data = {
                     'jobGroup': data['group_id'],
                     'triggerStatus': -1,
@@ -302,7 +313,8 @@ def Synchronous_xxjob():
                     data['job_name'] = page['jobDesc']
                     data['job_owner'] = page['author']
                     data['job_parmes'] = page['executorParam']
-                    poplist = r.post('http://xxljob-{}.nextop.cc/xxl-job-admin/jobgroup/loadById'.format(env), data=
+                    p_url = urljoin(host, 'xxl-job-admin/jobgroup/loadById')
+                    poplist = r.post(p_url.format(env), data=
                     'id={}'.format(data['group_id'])
                                      , verify=False)
                     pop = poplist.json()['content']['registryList']
@@ -310,6 +322,49 @@ def Synchronous_xxjob():
                     models.xxjobMenu.objects.update_or_create(defaults=data, job_id=data['job_id'], env=data['env'])
             except Exception as e:
                 logger.error('更新xxjob失败：{}'.format(str(e)))
+                continue
+
+@registe_job(task_name='同步所有dubbo接口')
+def synchronous_dubbo():
+    db.close_old_connections()
+    r = getDubboAdminToken()
+    # 第一个版本先固定1000条，暂时够用了
+    serviceListUrl = 'https://dubbo-admin.erp-sit.yintaerp.com/api/dev/service?pattern=service&filter=*&page=0&size=1000'
+    serviceListRep = r.get(serviceListUrl).json()
+    for content in serviceListRep['content']:
+        with transaction.atomic():
+            save_id = transaction.savepoint()
+            try:
+                serviceData = getServiceMethod(r, content)
+                logger.info(serviceData)
+                interfaceDate = serviceData['interfaceDate']
+                methodData = serviceData['methodDate']
+                interface,isCreated = DubboInterFaceService.objects.update_or_create(
+                    defaults=interfaceDate,
+                    serviceName=interfaceDate['serviceName'],
+                    InterFaceService=interfaceDate['InterFaceService'])
+                interfaceId = interface.id
+                if methodData:
+                    for method in methodData:
+                        method['interfaceId'] = interfaceId
+                        parmesList = method['parmesList']
+                        method.pop('parmesList')
+                        methodQuery,created = DubboInterFaceMethod.objects.update_or_create(
+                            defaults=method,
+                            interfaceId=interfaceId,
+                            methodName=method['methodName']
+                        )
+                        if parmesList:
+                            for parme in parmesList:
+                                parme['methodId'] = methodQuery.id
+                                DubboInterFaceMethodParmes.objects.update_or_create(
+                                    defaults=parme,
+                                    parmesNameEn = parme['parmesNameEn'],
+                                    methodId = methodQuery.id
+                                )
+            except json.decoder.JSONDecodeError as e:
+                logging.error('errormsg:{}'.format(str(e)))
+                transaction.savepoint_rollback(save_id)
                 continue
 
 
@@ -517,3 +572,94 @@ def websocketPage(arg, room_name):
     logging.info('定时任务查询总数{}'.format(p.count))
     result = [] if page not in p.page_range else p.page(page).object_list  # 如果传的页码不在数据的有效页码内，返回空列表
     send_group_msg(room_name, json.loads(json.dumps(result, cls=DateEncoder, ensure_ascii=False)))
+
+def getServiceMethod(r,content):
+    service = content['service']
+    if not content['group']:
+        if content['version']:
+            serviceDetailUrl = 'https://dubbo-admin.erp-sit.yintaerp.com/api/dev/service/{}:{}'.format(service, content[
+                'version'])
+        else:
+            serviceDetailUrl = 'https://dubbo-admin.erp-sit.yintaerp.com/api/dev/service/{}'.format(service)
+        serviceDetailRep = r.get(serviceDetailUrl).json()
+    else:
+        if content['version']:
+            serviceDetailUrl = 'https://dubbo-admin.erp-sit.yintaerp.com/api/dev/service/{}*{}:{}'.format(content['group'],service, content[
+                'version'])
+        else:
+            serviceDetailUrl = 'https://dubbo-admin.erp-sit.yintaerp.com/api/dev/service/{}*{}'.format(content['group'],service)
+        serviceDetailRep = r.get(serviceDetailUrl).json()
+    providers = serviceDetailRep['providers'] if serviceDetailRep.__contains__('providers') else []
+    data = {
+        'interfaceDate':{
+            "serviceName":content['appName'],
+            "InterFaceService":content['service'],
+            "providers":providers,
+            "version":content['version'],
+            "group":content['group']
+        },
+        'methodDate':[]
+    }
+    # 获取serviceMethodDetail
+    try:
+        serviceMethodDetailUrl = 'https://dubbo-admin.erp-sit.yintaerp.com/api/dev/docs/apiModuleList?dubboIp={}&dubboPort={}'.format(
+            providers[0]['address'].split(':')[0],providers[0]['address'].split(':')[1]
+        )
+        # serviceMethodDetailUrl = 'https://dubbo-admin.erp-sit.yintaerp.com/api/dev/docs/apiModuleList?dubboIp={}&dubboPort={}'.format(
+        #     '192.168.3.202', 31281
+        # )
+        serviceMethodrsp = r.get(serviceMethodDetailUrl)
+        serviceMethodDetail = json.loads(serviceMethodrsp.text)
+        serviceMethodDetail = eval(serviceMethodDetail.replace('null', 'None').replace('false', 'False').replace('true', 'True'))
+        for module in serviceMethodDetail:
+            for method in module['moduleApiList']:
+                methodDict = {}
+                apiName = '{}.{}{}'.format(module['moduleClassName'],method['apiName'],method['paramsDesc'])
+                methodParmesUrl = 'https://dubbo-admin.erp-sit.yintaerp.com/api/dev/docs/apiParamsResp'
+                methodParmesRsp = r.get(methodParmesUrl,params={
+                    'dubboIp':providers[0]['address'].split(':')[0],
+                    'dubboPort':providers[0]['address'].split(':')[1],
+                    'apiName':apiName
+                })
+                methodParmesDetail = json.loads(methodParmesRsp.text)
+                methodParmesDetail = eval(
+                    methodParmesDetail.replace('null', 'None').replace('false', 'False').replace('true', 'True'))
+                methodDict['serviceName'] = content['appName']
+                methodDict['InterFaceService'] = content['service']
+                methodDict['moduleDocName'] = module['moduleClassName']
+                methodDict['methodName'] = method['apiDocName']
+                methodDict['methodNamedocs'] = method['apiRespDec']
+                methodDict['version'] = content['version']
+                methodDict['group'] = content['group']
+                methodDict['parmesType'] = methodParmesDetail['methodParamInfo']
+                methodDict['paramsDesc'] = method['paramsDesc']
+                methodDict['parmesList'] = []
+                for parmes in methodParmesDetail['params']:
+                    for parme in parmes['paramInfo']:
+                        parmesDate = {
+                            'parmesNameEn':parme['name'],
+                            'parmesNameZn':parme['docName'],
+                            'parmesText':parme['subParamsJson'],
+                            'javaType':parme['javaType'],
+                            'required':parme['required'],
+                            'description':parme['description']
+                        }
+                        methodDict['parmesList'].append(parmesDate)
+                data['methodDate'].append(methodDict)
+    except Exception as e:
+        logging.info('获取parmes失败，未维护docs文档，尝试单独获取method')
+        logging.error('内部error:{}'.format(str(e)))
+        if serviceDetailRep['metadata'] and serviceDetailRep['metadata'].__contains__('methods'):
+            if serviceDetailRep['metadata']['methods']:
+                for method in serviceDetailRep['metadata']['methods']:
+                    methodDict = {}
+                    methodDict['serviceName'] = content['appName']
+                    methodDict['InterFaceService'] = content['service']
+                    methodDict['methodName'] = method['name']
+                    methodDict['methodNamedocs'] = method['name']
+                    methodDict['version'] = content['version']
+                    methodDict['group'] = content['group']
+                    methodDict['parmesType'] = method['parameterTypes'][0] if method['parameterTypes'] else None
+                    methodDict['parmesList'] = []
+                    data['methodDate'].append(methodDict)
+    return data

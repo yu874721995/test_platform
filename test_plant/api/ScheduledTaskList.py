@@ -370,7 +370,7 @@ class ScheduledTaskListSet():
         task_id = query.task_id if 'now' in query.task_id else query.task_id + '_now'
         func_name = query.func_name
         args = query.args
-        scheduler.add_job(method(func_name), run_date=datetime.datetime.now(), args=eval(args), id=task_id)
+        scheduler.add_job(method(func_name), run_date=datetime.datetime.now()+datetime.timedelta(hours=0,minutes=0,seconds=5), args=eval(args), id=task_id)
         return HttpResponse(json.dumps({
             'code': 10000,
             'msg': '执行成功'

@@ -19,7 +19,7 @@ def pytest_sessionstart(session):
     Project.dir = session.config.cache.get("project_dir", None)
     if not Project.dir:  # First time run, no pytest_cache
         first_path = os.getcwd()
-        test_case = first_path.find("test_case")
+        test_case = first_path.find("case")
         # 是否存在test_case，存在则找到上一层作为项目路径
         if test_case > 0:
             Project.dir = os.path.dirname(first_path)
@@ -52,7 +52,6 @@ def query_sql(env_vars):
     def res_sql(sql):
         data_res = env_vars.mysql_engine.select(sql)
         if data_res and len(data_res) == 1:
-            # print("数据库查询结果”", i[0], type(i[0]))
             if isinstance(data_res[0][0], int) and len(str(data_res[0][0])) >= 15:
                 data = str(data_res[0][0])
                 return data
@@ -194,7 +193,7 @@ def run_job():
             else:
                 return "执行失败"
         except Exception as e:
-            print("xxl job 定时任务执行失败", e)
+            logger.error("xxl job 定时任务执行失败", e)
 
     return run_xxl_job
 

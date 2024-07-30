@@ -18,7 +18,6 @@ class Logger():
         #定义日志的名字和路径
         log_time = time.strftime('%y%m%d%H%M',time.localtime(time.time()))
         log_path = os.path.abspath('.')+'/Public/Logs/'
-        print(log_path)
         # log_path = os.path.dirname(os.path.abspath('.')) + '/Public/Logs/'
         log_name = log_path+str(log_time)+'.log'
 

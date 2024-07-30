@@ -17,7 +17,6 @@ class MyJSONField(serializers.JSONField):
             try:
                 value = json.loads(value)
             except Exception as e:
-                # print(f"str转json异常: {e} \n {value}", )
                 try:
                     value = eval(
                         value.replace('null', 'None').replace('true', 'True').replace('false', 'False'))

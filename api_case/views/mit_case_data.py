@@ -17,15 +17,15 @@ class MitDataViewSet(ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         # 预处理所有数据，如果有用例的。用例状态变成 2
-        def have_case():
-            query_2 = MitData.objects.filter(status=1)
-            mit_id = []
-            for obj in query_2:
-                case = Case.objects.filter(only_api=obj.only_api)
-                if case:
-                    mit_id.append(obj.id)
-            MitData.objects.filter(id__in=mit_id).update(status=2)
-        Thread(target=have_case, args=()).start()
+        # def have_case():
+        #     query_2 = MitData.objects.filter(status=1)
+        #     mit_id = []
+        #     for obj in query_2:
+        #         case = Case.objects.filter(only_api=obj.only_api)
+        #         if case:
+        #             mit_id.append(obj.id)
+        #     MitData.objects.filter(id__in=mit_id).update(status=2)
+        # Thread(target=have_case, args=()).start()
 
         query = Q()
         host_name = request.GET.get("hostName")

@@ -8,7 +8,6 @@ import requests
 from test_management import models
 from django.http import HttpResponse
 from test_management.common import json_request,request_verify
-from nextop_tapd.models import mail_list
 from django.core.paginator import Paginator
 from test_management.common import DateEncoder,jwt_token
 from django.db.models import Q
@@ -32,26 +31,21 @@ class moduleViewSet():
         if not server_env or server_env == 'None':
             server_env = '-'
         up_id = json_request(request, 'up_id',int,not_null=False,default=None)
-        type = json_request(request, 'type', int)#1位一级，2为二级
+        type = json_request(request, 'type', int)#1位一级，2为二级,3为三级
         master = json_request(request, 'master', int)
-        dev_master = json_request(request, 'dev_master', int,default=179)
-        if not master:
-            userEmail = jwt_token(request)['email']
-            master = mail_list.objects.get(email=userEmail).id
+        dev_master = json_request(request, 'dev_master', int,not_null=False,default=1)
         creator = jwt_token(request)['username']
+        user_id = jwt_token(request)['userId']
+        if not master:
+            master = user_id
         if not id:
-            up_name_exist = models.moduleMent.objects.filter(name=name, project_id=project_id).exists()
-            if up_name_exist and type == 1:
-                return HttpResponse(json.dumps({
-                    'code': 10005,
-                    'msg': '该模块已存在'
-                }))
-            dow_name_exist = models.moduleMent.objects.filter(up_id=up_id,name=name,project_id=project_id).exists()
-            if type == 2 and dow_name_exist:
-                return HttpResponse(json.dumps({
-                    'code': 10005,
-                    'msg': '同一一级模块下不能添加相同名称的二级分类'
-                }))
+            # up_name_exist = models.moduleMent.objects.filter(name=name, project_id=project_id).exists()
+            # if up_name_exist:
+            #     return HttpResponse(json.dumps({
+            #         'code': 10005,
+            #         'msg': '该模块已存在'
+            #     }))
+            pass
         else:
             id_exist = models.moduleMent.objects.filter(id=id).exists()
             if not id_exist:
@@ -59,12 +53,17 @@ class moduleViewSet():
                     'code': 10005,
                     'msg': '没有该模块'
                 }))
-        if type == 2:
-            server_env = None
+            # up_name_exist = models.moduleMent.objects.filter(name=name, project_id=project_id).exclude(id=id).exists()
+            # if up_name_exist:
+            #     return HttpResponse(json.dumps({
+            #         'code': 10005,
+            #         'msg': '该模块已存在'
+            #     }))
+        if type != 1:
             if not up_id:
                 return HttpResponse(json.dumps({
                     'code': 10005,
-                    'msg': '二级分类必须选择一个上级分类'
+                    'msg': '下级分类必须选择一个上级分类'
                 }))
 
         try:
@@ -117,22 +116,15 @@ class moduleViewSet():
             query &= Q(master=master)
 
         up_datas = list(models.moduleMent.objects.filter(query,type=1).order_by('-create_time').values())
-        dow_datas = list(models.moduleMent.objects.filter(query,type=2).order_by('-create_time').values())
-        if dow_datas != [] or not dow_datas:
-            dow_up_id = set([i['up_id'] for i in dow_datas])
-            dow_up_datas = list(models.moduleMent.objects.filter(id__in=dow_up_id,status=1).order_by('-create_time').values())
-            for dow_up_data in dow_up_datas:
-                if dow_up_data not in up_datas:
-                    up_datas.append(dow_up_data)
-        datas = []
+        dow_datas = list(models.moduleMent.objects.filter(query, type=2).order_by('-create_time').values())
+        for dow_data in dow_datas:
+            dow_data['children'] = list(models.moduleMent.objects.filter(query,type=3,up_id=dow_data['id']).order_by('-create_time').values())
         for up_data in up_datas:
             up_data['children'] = []
             for dow_data in dow_datas:
-                if dow_data['up_id'] == up_data['id']:
+                if up_data['id'] == dow_data['up_id']:
                     up_data['children'].append(dow_data)
-            datas.append(up_data)
-
-        p = Paginator(datas, limit)  # 实例化分页对象
+        p = Paginator(up_datas, limit)  # 实例化分页对象
         count = p.count
         logging.info('联调标签查询总数{}'.format(p.count))
         result = [] if page not in p.page_range else p.page(page).object_list # 如果传的页码不在数据的有效页码内，返回空列表

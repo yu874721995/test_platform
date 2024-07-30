@@ -64,7 +64,6 @@ def startproject(project_name):
 
 def write_fixture_env_vars_file(project_id, env_var, fixtures_dir):
     # fixture_env_vars.py  写入项目host, 运行环境联调标签名
-    print("项目id:", project_id)
     project_host = projectMent.objects.get(id=project_id)
     definition = f'"{env_var}": {{"domain": "{project_host.host}"}},'
     filepath = os.path.join(fixtures_dir, "fixture_env_vars.py")
@@ -240,7 +239,7 @@ def run_case(request, **kwargs):  # 单用例、单组合用例执行接口
         case_type = 2
     else:  # 从单接口数据库取case id 给用例
         case = Case.objects.get(id=case_id)
-        case_file_name = 'test_case'
+        case_file_name = 'case'
         case_type = 1
     project_id = case.project_id  # 项目id
     p = ProjectPath(project_id, run_env, user_id)  # 项目目录文件

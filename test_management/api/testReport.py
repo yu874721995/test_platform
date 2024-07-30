@@ -2,20 +2,13 @@
 # -*- coding:utf-8 -*-
 # @Author    :Careslten
 
-import base64
 import json
 import logging
-import time
 import requests
-import os
-import easyocr
-from test_management import models
 from django.http import HttpResponse
-from django.db import transaction
 from test_management.common import json_request
 from django.core.paginator import Paginator
-from test_management.common import DateEncoder,jwt_token
-from django.db.models import Q
+from test_management.common import DateEncoder
 from api_case import models as case_model
 
 r = requests.session()

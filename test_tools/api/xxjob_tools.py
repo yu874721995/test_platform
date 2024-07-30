@@ -24,16 +24,16 @@ class xxjob_toolesView():
         jobQuery = models.xxjobMenu.objects.get(job_id=job_id,env=env)
         if jobQuery.env == 1:
             r = reload_xxjob_cookie('test')
-            urls = 'http://xxljob-test.nextop.cc/xxl-job-admin/jobinfo/trigger'
+            urls = 'http://xxl-job-admin.erp-sit.yintaerp.com/xxl-job-admin/jobinfo/trigger'
         else:
             r = reload_xxjob_cookie('pre')
-            urls = 'http://xxljob-pre.nextop.cc/xxl-job-admin/jobinfo/trigger'
+            urls = 'http://xxl-job-admin.erp-uat.yintaerp.com/xxl-job-admin/jobinfo/trigger'
         data = {
             'id': job_id,
-            'addressList': '%s' %popid
+            # 'addressList': '%s' %popid
         }
         if job_parmes != None:
-            data['executorParam'] = '%s' %(job_parmes)
+            data['executorParam'] = json.dumps(job_parmes)
         runxxjob = r.post(urls, data=data)
         if runxxjob.json()['code'] == 200:
             return HttpResponse(json.dumps({

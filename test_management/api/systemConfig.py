@@ -1,13 +1,9 @@
-import base64
+
 import json
 import logging
-import time
 import requests
-import os
-import easyocr
 from test_management import models
 from django.http import HttpResponse
-from django.db import transaction
 from test_management.common import json_request,request_verify
 from django.core.paginator import Paginator
 from test_management.common import DateEncoder,jwt_token
@@ -24,17 +20,25 @@ class SystemConfig():
         name = json_request(reqeust,'name',str,not_null=False,default=None)
         ext = json_request(reqeust, 'ext')
         remark = json_request(reqeust, 'remark')
+        id = json_request(reqeust,'id',default=None)
         if '_tapd_cookie' in name and username not in name:
             return HttpResponse(json.dumps({
                 'code': 10005,
                 'msg': '不允许设置其他人的tapd-Cookie信息'
             }))
         try:
-            models.system_config.objects.update_or_create(defaults={
-                'name':name,
-                'ext':ext,
-                'remark':remark
-            },name=name)
+            if id:
+                models.system_config.objects.update_or_create(defaults={
+                    'name':name,
+                    'ext':ext,
+                    'remark':remark
+                },id=id)
+            else:
+                models.system_config.objects.create(**{
+                    'name': name,
+                    'ext': ext,
+                    'remark': remark
+                })
         except Exception as e:
             logger.error('添加配置信息失败:{}'.format(str(e)))
             return HttpResponse(json.dumps({

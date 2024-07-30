@@ -1,5 +1,4 @@
-import filetype
-import os
+
 from django.http import HttpResponse
 from test_management import models as manageModel
 from nextop_tapd import models

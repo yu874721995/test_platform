@@ -6,11 +6,9 @@ import json
 import logging
 from django.http import HttpResponse
 from django.core.paginator import Paginator
-import asyncio
 from test_management import models
 from django.db.models import Q
-import functools
-from test_management.common import get_k8s_list, json_request, DateEncoder, jwt_token
+from test_management.common import json_request, DateEncoder, jwt_token
 
 logger = logging.getLogger(__name__)
 

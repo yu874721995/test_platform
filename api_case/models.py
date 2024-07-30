@@ -106,8 +106,10 @@ class MitData(models.Model):
         # managed = False
         db_table = 'mit_data'   # mitmproxy 接口抓包数据表
     id = models.AutoField(primary_key=True)
+    name = models.CharField("接口名称", max_length=200, default=None,null=True)
     only_api = models.CharField("接口唯一字段", max_length=200)
     module = models.CharField("接口所属服务", max_length=200, null=True)
+    plat_module = models.CharField("接口所属模块", default=None,max_length=200, null=True)
     created_time = models.DateTimeField("创建时间", blank=True, null=True)
     req_method = models.CharField("请求方法", max_length=100)
     host_name = models.CharField("请求的服务器host名", max_length=100)
@@ -115,6 +117,7 @@ class MitData(models.Model):
     single_body = models.TextField("请求数据", blank=True, null=True)
     result = models.TextField("返回结果", blank=True, null=True)
     ip = models.CharField("本地host", max_length=200, default="")
+    project_id = models.IntegerField("所属项目", default=None)
     env = models.IntegerField("环境标签1联调 2预发 3生产 0未知", null=True, blank=True)
     is_bug = models.IntegerField("1没有转bug，2已转bug", null=True, blank=True, default=1)
     elapsed = models.DecimalField("接口响应时间", max_digits=10, decimal_places=3, null=True)
@@ -123,21 +126,29 @@ class MitData(models.Model):
     status = models.IntegerField("1没有转bug2已转bug", blank=True, null=True, default=1)
     cookie = models.CharField("请求cookie", max_length=255, null=True)
     source = models.CharField("来源，默认抓包", max_length=100, blank=True, null=True, default="抓包")
+    content_type = models.CharField("请求格式", max_length=100, default="application/json")
+    creator = models.CharField("创建人", max_length=200, null=True)
+    case_status = models.IntegerField("0未知 1、无用例、2、有用例", blank=True, null=True, default=0)
 
 class SwaggerApi(BaseTable):
     class Meta:
         db_table = 'swagger_api' # swagger接口数据表
-
-    objects = None
     id = models.AutoField(primary_key=True)
-    api_name = models.CharField("接口名称", max_length=255)
-    module = models.CharField("所属服务", max_length=255, null=True)
-    method = models.CharField("请求方法", max_length=10)
-    url = models.CharField("请求地址", max_length=100)
-    params = models.TextField("接口传参说明", max_length=50000, blank=True, null=True)
-    responses = models.TextField("返回参数说明", max_length=50000, blank=True, null=True)
-    assert_res = models.TextField("默认断言", max_length=10000, blank=True, null=True)
-    status = models.CharField("接口状态：有用例、新增、更新", max_length=100, blank=True)
+    case_status = models.IntegerField("接口状态：1无用例、2有用例", blank=True, null=True, default=1)
+    status = models.IntegerField("1、最新、2、有更新", blank=True, null=True, default=1)
+    project_id = models.IntegerField("所属项目id")
+    api_name = models.CharField("接口名称",max_length=255)
+    module = models.CharField("所属服务",max_length=255, null=True)
+    method = models.CharField("请求方法",max_length=10)
+    url = models.CharField("请求地址",max_length=255)
+    params = models.TextField("接口传参说明",blank=True, null=True)
+    consumess = models.TextField("接口headers说明",blank=True, null=True)
+    responses = models.TextField("返回参数说明", blank=True, null=True)
+    assert_res = models.TextField("默认断言",blank=True, null=True)
     only_api = models.CharField("接口唯一名称", max_length=255, blank=True)
-    extend_case_id = models.TextField("关联的接口id", max_length=10000, blank=True)
-    source = models.CharField("来源", max_length=50, default="swagger_api")
+    source = models.CharField("来源", max_length=50, default="swagger")
+    is_delete = models.IntegerField("0正常、1删除", blank=True, null=True, default=0)
+    created_time = models.DateTimeField('创建时间', auto_created=True)
+    updated_time = models.DateTimeField('更新时间', auto_now=True)
+    test_status = models.IntegerField("1、正常、2、无需测试", blank=True, null=True, default=1)
+

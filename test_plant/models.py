@@ -82,9 +82,10 @@ class TestPlantTask(models.Model):
     cookie = models.CharField(max_length=200,default=None, blank=True, null=True, verbose_name='cookie')
     exec_type = models.CharField(max_length=200,blank=False,default=1, verbose_name='执行策略')
     exec_time = models.TextField(blank=False,default=None, verbose_name='执行时间')
-    dingding = models.IntegerField(blank=True,null=True,default=None,verbose_name='钉钉通知人')
+    dingding = models.CharField(max_length=200,blank=False,default=None,verbose_name='钉钉通知人')
     Last_status = models.IntegerField(blank=True,default=4, verbose_name='最后一次执行状态，1-正常，2-错误，3-执行中，4-未开始')
     is_del = models.IntegerField(blank=True,default=1, verbose_name='是否删除，1-正常，2-删除')
+    service_name = models.CharField(max_length=200,blank=False,default=1, verbose_name='所属服务名称')
 
 class TestPlantExcu(models.Model):
     '''

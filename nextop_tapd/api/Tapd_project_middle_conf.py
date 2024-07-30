@@ -9,7 +9,7 @@ import requests
 from test_management import models
 from django.http import HttpResponse
 from django.db import transaction
-from test_plant.common import add_job,modify_job
+from test_plant.common import add_job
 from test_management.common import json_request, request_verify
 from django.core.paginator import Paginator
 from test_management.common import DateEncoder, jwt_token

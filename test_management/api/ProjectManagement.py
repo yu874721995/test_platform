@@ -9,7 +9,9 @@ from test_management import models
 from django.core.paginator import Paginator
 from django.http import HttpResponse
 from nextop_tapd.task import return_tapdSession,get_tapd_pro
-from test_management.common import json_request, jwt_token, DateEncoder, request_verify
+from test_management.common import json_request, jwt_token, DateEncoder, request_verify,dingUser
+from api_case.models import SwaggerApi
+from test_case.models import Case
 
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 logger = logging.getLogger(__name__)
@@ -32,8 +34,8 @@ class TapdProjectListSet():
         loop.close()
 
         p = Paginator(data, limit)
-        count = p.count
-        logging.info('项目查询总数{}'.format(p.count))
+        count = p.count if p !=None else 0
+        logging.info('项目查询总数{}'.format(count))
         result = [] if page not in p.page_range else p.page(page).object_list  # 如果传的页码不在数据的有效页码内，返回空列表
         return HttpResponse(json.dumps({
             'count': count, 'page': page, 'code': 10000, 'data': result
@@ -128,6 +130,8 @@ class ProjectListSet():
         remark = json_request(request, 'remark', default='')
         type = json_request(request, 'type', int)  # 1新增/2编辑
         id = json_request(request, 'id', int)
+        principal_code = json_request(request, 'principal_code')
+        principal_name=dingUser(principal_code)[0]['principal_name'] if dingUser(principal_code)!=[] else ''
         if type == 2 and not id:
             return HttpResponse(json.dumps({
                 'code': 10005, 'msg': '编辑时请传递项目id'
@@ -151,6 +155,8 @@ class ProjectListSet():
                     'project_name': project_name,
                     'host': host,
                     'remark': remark,
+                    'principal_code': principal_code,
+                    'principal_name': principal_name,
                     'creator': userdetail['username'],
                 }, id=id)
             else:
@@ -158,6 +164,8 @@ class ProjectListSet():
                     'project_name': project_name,
                     'host': host,
                     'remark': remark,
+                    'principal_code': principal_code,
+                    'principal_name': principal_name,
                     'creator': userdetail['username'],
                 })
             return HttpResponse(json.dumps({
@@ -173,11 +181,45 @@ class ProjectListSet():
     def proList(cls, request):
         page = json_request(request, 'page', int, default=1)
         limit = json_request(request, 'limit', int, default=20)
-        query = models.projectMent.objects.filter().order_by('-create_time').values()
-        p = Paginator(tuple(query), limit)
+        querys = models.projectMent.objects.filter().order_by('-create_time').values()
+        p = Paginator(tuple(querys), limit)
         count = p.count
         logging.info('项目查询总数{}'.format(p.count))
         result = [] if page not in p.page_range else p.page(page).object_list  # 如果传的页码不在数据的有效页码内，返回空列表
         return HttpResponse(json.dumps({
             'totalNum': count, 'page': page, 'code': 10000, 'items': result, 'msg': '操作成功'
+        }, cls=DateEncoder))
+
+    @classmethod
+    def proManageList(cls, request):
+        page = json_request(request, 'page', int, default=1)
+        limit = json_request(request, 'limit', int, default=20)
+        querys = models.projectMent.objects.filter().order_by('-create_time').values()
+        for query in querys:
+            only_apis = []
+            InterFaceArray = SwaggerApi.objects.filter(project_id=query['id'],is_delete=0,test_status=1)
+            InterFaceNum = InterFaceArray.count()
+            for interFace in InterFaceArray.values():
+                only_apis.append(interFace['only_api'])
+            CaseNum = Case.objects.filter(url__in=only_apis,status=1).count()
+            query['interFaceNum'] = InterFaceNum
+            query['caseNum'] = CaseNum
+            caseStatus = SwaggerApi.objects.filter(project_id=query['id'],case_status=2,is_delete=0,test_status=1).count()
+            if caseStatus and InterFaceNum:
+                query['isNum'] =  int((caseStatus / InterFaceNum) * 100)
+            else:
+                query['isNum'] = 0
+        p = Paginator(tuple(querys), limit)
+        count = p.count
+        logging.info('项目查询总数{}'.format(p.count))
+        result = [] if page not in p.page_range else p.page(page).object_list  # 如果传的页码不在数据的有效页码内，返回空列表
+        return HttpResponse(json.dumps({
+            'totalNum': count, 'page': page, 'code': 10000, 'items': result, 'msg': '操作成功'
+        }, cls=DateEncoder))
+
+    @classmethod
+    def dingUserlist(cls, request):
+        result=dingUser()
+        return HttpResponse(json.dumps({
+            'code': 10000, 'data': result, 'msg': '操作成功'
         }, cls=DateEncoder))

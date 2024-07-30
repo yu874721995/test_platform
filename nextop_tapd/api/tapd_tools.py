@@ -8,7 +8,7 @@ import requests
 from test_management import models
 from django.http import HttpResponse
 from test_management.common import json_request, request_verify
-from test_management.common import DateEncoder, jwt_token
+from test_management.common import  jwt_token
 from nextop_tapd.common import create_bug
 from api_case.models import MitData
 
